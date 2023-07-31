@@ -22,12 +22,19 @@ The original codebase is from the DS6 project (https://github.com/soumickmj/DS6)
 BibTeX entry (for the original DS6 project):
 
 ```bibtex
-@article{chatterjee2020ds6,
-  title={DS6, Deformation-aware Semi-supervised Learning: Application to Small Vessel Segmentation with Noisy Training Data},
-  author={Chatterjee, Soumick and Prabhu, Kartik and Pattadkal, Mahantesh and Bortsova, Gerda and Sarasaen, Chompunuch and Dubost, Florian and Mattern, Hendrik and de Bruijne, Marleen and Speck, Oliver and N{\"u}rnberger, Andreas},
-  journal={arXiv preprint arXiv:2006.10802},
-  year={2020}
+@article{chatterjee2022ds6,
+          AUTHOR = {Chatterjee, Soumick and Prabhu, Kartik and Pattadkal, Mahantesh and Bortsova, Gerda and Sarasaen, Chompunuch and Dubost, Florian and Mattern, Hendrik and de Bruijne, Marleen and Speck, Oliver and Nürnberger, Andreas},
+          TITLE = {DS6, Deformation-Aware Semi-Supervised Learning: Application to Small Vessel Segmentation with Noisy Training Data},
+          JOURNAL = {Journal of Imaging},
+          VOLUME = {8},
+          YEAR = {2022},
+          NUMBER = {10},
+          ARTICLE-NUMBER = {259},
+          URL = {https://www.mdpi.com/2313-433X/8/10/259},
+          ISSN = {2313-433X},
+          DOI = {10.3390/jimaging8100259}
 }
+
 ```
 Thank you so much for your support.
 
