@@ -71,6 +71,10 @@ if __name__ == '__main__':
                              "3{Use-Plausable-And-Main-For-TrainAndValid}; \n"
                              "4{Use-Plausable-Only-For-TrainAndValid};")
 
+    parser.add_argument("--prob_injection_at",
+                        default="end",
+                        help="Where in the task UNet posterior net will inject, only for model 5: end (default) or bottom")
+
     parser.add_argument('--train',
                         default=True, action=argparse.BooleanOptionalAction,
                         help="To train the model")
@@ -189,7 +193,7 @@ if __name__ == '__main__':
     test_logger = Logger(MODEL_NAME + '_test', LOGGER_PATH).get_logger()
 
     # Model
-    model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test)
+    model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at)
     model.cuda()
     print("It's a 2D model!!" if bool(args.slice2D_shape) else "It's a 3D model!!")
 
