@@ -162,3 +162,4 @@ wandb/run-20220919_161025-ProbU2Dv2_DistLossPureFID_At3_pLBL4TrainANDMan4Val_Dis
 
 OrigBaselines/*
 prova.py
+.vscode/launch.json
