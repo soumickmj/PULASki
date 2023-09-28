@@ -34,7 +34,7 @@ MODEL_UNET_DEEPSUP = 2
 MODEL_ATTENTION_UNET = 3
 MODEL_PROBABILISTIC_UNET = 4
 
-def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end"): #Send model params from outside
+def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end", no_outact_op=False): #Send model params from outside
     defaultModel = U_Net() #Default
     if is2D:
         if model_no not in [1, 2, 3, 4, 5, 6, 7, 8]:
@@ -48,7 +48,7 @@ def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end"): #Sen
             4: ProbabilisticUnet2D(input_channels=1, num_classes=1, num_filters=[32,64,128,192], latent_dim=2, no_convs_fcomb=4, beta=10.0),
             5: ProbabilisticSegmentationNet(in_channels=1, out_channels=1, 
                                             task_op=InjectionUNet2D,
-                                            task_kwargs={"output_activation_op": nn.Sigmoid, "activation_kwargs": {"inplace": True}, "injection_at":  prob_injection_at},  
+                                            task_kwargs={"output_activation_op": nn.Identity if no_outact_op else nn.Sigmoid, "activation_kwargs": {"inplace": True}, "injection_at":  prob_injection_at},  
                                             prior_op=InjectionConvEncoder2D,
                                             prior_kwargs={"activation_kwargs": {"inplace": True}, "norm_depth": 2}, 
                                             posterior_op=InjectionConvEncoder2D,
@@ -71,7 +71,7 @@ def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end"): #Sen
             4: ProbabilisticUnet(num_filters=[32,64,128,192]),
             # 4: ProbabilisticUnet(num_filters=[64,128,256,512,1024]),
             5: ProbabilisticSegmentationNet(in_channels=1, out_channels=1, 
-                                            task_kwargs={"output_activation_op": nn.Sigmoid, "activation_kwargs": {"inplace": True}, "injection_at": prob_injection_at}, 
+                                            task_kwargs={"output_activation_op": nn.Identity if no_outact_op else nn.Sigmoid, "activation_kwargs": {"inplace": True}, "injection_at": prob_injection_at}, 
                                             prior_kwargs={"activation_kwargs": {"inplace": True}, "norm_depth": 2}, 
                                             posterior_kwargs={"activation_kwargs": {"inplace": True}, "norm_depth": 2},
                                             ) ,

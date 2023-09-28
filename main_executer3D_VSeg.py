@@ -118,7 +118,7 @@ if __name__ == '__main__':
                         default=0, type=int,
                         help="0: Focal Tversky Loss (Default for DS6 and PULASki) \n"
                              "1: Dice Loss \n"
-                             "2: Binary Cross Entropy Loss")
+                             "2: Binary Cross Entropy Loss (BCEWithLogitsLoss)")
     parser.add_argument('--distloss',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To compute loss by comparing distributions of output and GT (for ProbUNet)")
@@ -202,7 +202,7 @@ if __name__ == '__main__':
     test_logger = Logger(MODEL_NAME + '_test', LOGGER_PATH).get_logger()
 
     # Model
-    model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at)
+    model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at, no_outact_op=(args.segloss_mode==2))
     model.cuda()
     print("It's a 2D model!!" if bool(args.slice2D_shape) else "It's a 3D model!!")
 

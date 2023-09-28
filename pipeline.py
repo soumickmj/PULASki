@@ -100,9 +100,15 @@ class Pipeline:
         elif cmd_args.segloss_mode == 1:
             self.criterion_segmentation = Dice()
         elif cmd_args.segloss_mode == 2:
-            self.criterion_segmentation = torch.nn.BCELoss()
+            self.criterion_segmentation = torch.nn.BCEWithLogitsLoss()
         else:
             sys.exit("Error: Invalid segloss_mode")
+            
+        # Out activation (just to take care of BCEWithLogitsLoss)
+        if cmd_args.segloss_mode == 2:
+            self.out_activation = torch.nn.Identity()
+        else:
+            self.out_activation = torch.sigmoid          
         
         self.dice = Dice()
         self.iou = IOU()
@@ -302,7 +308,7 @@ class Pipeline:
                                     output1 = output
                                 if level > 0:  # then the output size is reduced, and hence interpolate to patch_size
                                     output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
-                                output = torch.sigmoid(output)
+                                output = self.out_activation(output)
                                 floss += loss_ratios[level] * self.criterion_segmentation(output, local_labels)
                                 level += 1
                     elif self.ProbFlag == 1:
@@ -351,7 +357,7 @@ class Pipeline:
                             if level > 0:  # then the output size is reduced, and hence interpolate to patch_size
                                 output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
 
-                            output = torch.sigmoid(output)
+                            output = self.out_activation(output)
                             floss2 += loss_ratios[level] * self.criterion_segmentation(output, local_labels_xt)
                             level += 1
 
@@ -359,7 +365,7 @@ class Pipeline:
                         # Consistency loss
                         with autocast(enabled=False):
                             output1T = warp_image(output1.float(), displacement, multi=True)
-                        floss_c = self.criterion_segmentation(torch.sigmoid(output2), output1T)
+                        floss_c = self.criterion_segmentation(self.out_activation(output2), output1T)
 
                         # -------------------------------------------------------------------------------------------
                         # Total loss
@@ -519,13 +525,13 @@ class Pipeline:
                                     if level > 0:  # then the output size is reduced, and hence interpolate to patch_size
                                         output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
 
-                                    output = torch.sigmoid(output)
+                                    output = self.out_activation(output)
                                     floss_iter += loss_ratios[level] * self.criterion_segmentation(output, local_labels)
                                     level += 1
                         elif self.ProbFlag == 1:
                             self.model.forward(local_batch, training=False)
                             output1 = self.model.sample(testing=True)
-                            # output1 = torch.sigmoid(self.model.sample(testing=True))
+                            # output1 = self.out_activation(self.model.sample(testing=True))
                             # floss_iter = self.criterion_segmentation(output1, local_labels)
                             elbo = self.model.elbo(local_labels)
                             reg_loss = self.l2_regularisation(self.model.posterior) + self.l2_regularisation(self.model.prior) + self.l2_regularisation(self.model.fcomb.layers)
@@ -560,7 +566,7 @@ class Pipeline:
                 
                 floss += floss_iter
                 if self.ProbFlag == 0 and self.modelID in [1,2,3]:
-                    dl, ds = self.dice(torch.sigmoid(output1), local_labels)
+                    dl, ds = self.dice(self.out_activation(output1), local_labels)
                 else:
                     dl, ds = self.dice(output1, local_labels)
                 dScore += ds.detach().item()
@@ -650,7 +656,7 @@ class Pipeline:
                             output = self.model(local_batch)
                             if type(output) is tuple or type(output) is list:
                                 output = output[0]
-                            output = torch.sigmoid(output).detach().cpu()
+                            output = self.out_activation(output).detach().cpu()
                         else:                            
                             sys.exit("This test function is not capable of testing Probabilistic UNets. Please use the test_prob functin.")
 
@@ -801,7 +807,7 @@ class Pipeline:
                                     output = self.model(local_batch)
                                     if type(output) is tuple or type(output) is list:
                                         output = output[0]
-                                    outputs.append(torch.sigmoid(output).detach().cpu())
+                                    outputs.append(self.out_activation(output).detach().cpu())
                         elif self.ProbFlag == 1:
                             sys.exit("Testing function for ProbFlag 1 (ProbUNetV1) is not ready!")
                             self.model.forward(local_batch, training=False)
