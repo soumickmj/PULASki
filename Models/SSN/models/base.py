@@ -30,7 +30,20 @@ def crop_center(x, size):
     crop += tuple(slice(c // 2 - s // 2, c // 2 + s // 2 + s % 2, 1) for c, s in zip(x.shape[2:], size))
     return x[crop]
 
-
+def is_conv(op):
+    conv_types = (nn.Conv1d,
+                nn.Conv2d,
+                nn.Conv3d,
+                nn.ConvTranspose1d,
+                nn.ConvTranspose2d,
+                nn.ConvTranspose3d)
+    if type(op) == type and issubclass(op, conv_types):
+        return True
+    elif type(op) in conv_types:
+        return True
+    else:
+        return False
+        
 class BiomedicalModule(nn.Module, ABC):
     def __init__(self, dim):
         super().__init__()
@@ -44,6 +57,38 @@ class BiomedicalModule(nn.Module, ABC):
 
     def update_fov_and_scale_factor(self, fov, scale_factor):
         raise NotImplementedError
+
+    def init_weights(self, init_fn, *args, **kwargs):
+
+        class init_(object):
+
+            def __init__(self):
+                self.fn = init_fn
+                self.args = args
+                self.kwargs = kwargs
+
+            def __call__(self, module):
+                if is_conv(type(module)):
+                    module.weight = self.fn(module.weight, *self.args, **self.kwargs)
+
+        _init_ = init_()
+        self.apply(_init_)
+
+    def init_bias(self, init_fn, *args, **kwargs):
+
+        class init_(object):
+
+            def __init__(self):
+                self.fn = init_fn
+                self.args = args
+                self.kwargs = kwargs
+
+            def __call__(self, module):
+                if is_conv(type(module)) and module.bias is not None:
+                    module.bias = self.fn(module.bias, *self.args, **self.kwargs)
+
+        _init_ = init_()
+        self.apply(_init_)
 
 
 class BiomedicalBlock(BiomedicalModule, ABC):

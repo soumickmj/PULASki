@@ -84,5 +84,10 @@ def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end"): #Sen
     if model_no == 5:
         model.init_weights(*[nn.init.kaiming_uniform_, 0])
         model.init_bias(*[nn.init.constant_, 0])
+    
+    # if model_no in [6,7,8]:
+    #     print("Warning: The weights of the non-ProbUNet baselines are being initialised using kaiming. Be careful! It's not part of the original!")
+    #     model.init_weights(*[nn.init.kaiming_uniform_, 0])
+    #     model.init_bias(*[nn.init.constant_, 0])
         
     return model

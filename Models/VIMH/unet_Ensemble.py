@@ -661,7 +661,20 @@ class UNet_Dec2_head(nn.Module):
         final = F.upsample(final, x_size[2:], mode='bilinear')
         return F.softmax(final, dim=1)
 
-
+def is_conv(op):
+    conv_types = (nn.Conv1d,
+                nn.Conv2d,
+                nn.Conv3d,
+                nn.ConvTranspose1d,
+                nn.ConvTranspose2d,
+                nn.ConvTranspose3d)
+    if type(op) == type and issubclass(op, conv_types):
+        return True
+    elif type(op) in conv_types:
+        return True
+    else:
+        return False
+    
 class UNet_Ensemble(nn.Module):
     def __init__(self, num_models=4, mutliHead_layer="Dec1", prior=0.1, num_in=4, num_classes=4):
         super(UNet_Ensemble, self).__init__()
@@ -706,6 +719,38 @@ class UNet_Ensemble(nn.Module):
                 [BUNetBIG_Dec2_head(num_classes=num_classes, prior=prior) for _ in range(num_models)])
         else:
             print("Only Multihead Layers for BDec1, BDec2, BDec3, BEnc, Dec1, Dec2, DDec2 and BIGBDec2 are implemented!!")
+
+    def init_weights(self, init_fn, *args, **kwargs):
+
+        class init_(object):
+
+            def __init__(self):
+                self.fn = init_fn
+                self.args = args
+                self.kwargs = kwargs
+
+            def __call__(self, module):
+                if is_conv(type(module)):
+                    module.weight = self.fn(module.weight, *self.args, **self.kwargs)
+
+        _init_ = init_()
+        self.apply(_init_)
+
+    def init_bias(self, init_fn, *args, **kwargs):
+
+        class init_(object):
+
+            def __init__(self):
+                self.fn = init_fn
+                self.args = args
+                self.kwargs = kwargs
+
+            def __call__(self, module):
+                if is_conv(type(module)) and module.bias is not None:
+                    module.bias = self.fn(module.bias, *self.args, **self.kwargs)
+
+        _init_ = init_()
+        self.apply(_init_)
 
     def forward(self, x, samples=3, num_classes=None, num_models=4, num_gpu=4):
         outputs = []
