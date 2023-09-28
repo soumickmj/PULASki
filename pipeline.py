@@ -591,7 +591,7 @@ class Pipeline:
 
             save_model(self.checkpoint_path, chk_dict)
 
-    def test(self, test_logger, save_results=True, test_subjects=None, tag=""): #for testing models other than Probabilistic UNets
+    def test(self, test_logger, save_results=True, test_subjects=None, tag="", save_raw_probs=False): #for testing models other than Probabilistic UNets
         test_logger.debug('Testing...')
 
         if test_subjects is None:
@@ -653,6 +653,9 @@ class Pipeline:
                     aggregator.add_batch(output, locations)
 
                 predicted = aggregator.get_output_tensor().squeeze().numpy()
+                
+                if save_raw_probs:
+                    save_nifti(predicted, os.path.join(result_root, subjectname+"_RawProbPred.nii.gz"))
 
                 try:
                     thresh = threshold_otsu(predicted)
@@ -688,7 +691,7 @@ class Pipeline:
 
         df.to_csv(os.path.join(result_root, "Results_Main.csv"))
 
-    def test_prob(self, test_logger, save_results=True, test_subjects=None, tag=""): #for testing Probabilistic UNets
+    def test_prob(self, test_logger, save_results=True, test_subjects=None, tag="", save_raw_probs=False): #for testing Probabilistic UNets
         test_logger.debug('Probabilistic Testing...')
         if self.ProbFlag == 0:
             test_logger.debug("Warning: The probabilistic flag is set to 0, but currently using the probabilistic testing function. This test function is mainly for testing Probabilistic UNets. test() function is meant for the other models. However, if it is desired to sample N-sampled from those models using MC-Dropout, then using this function is acqurate...")
@@ -825,6 +828,9 @@ class Pipeline:
                 for nP in range(self.n_prob_test):
 
                     predicted = aggregators[nP].get_output_tensor().squeeze().numpy()
+                    
+                    if save_raw_probs:
+                        save_nifti(predicted, os.path.join(result_root, f"{subjectname}_RawProbPred_{nP}.nii.gz"))
 
                     try:
                         thresh = threshold_otsu(predicted)
@@ -898,7 +904,7 @@ class Pipeline:
         df.to_csv(os.path.join(result_root, "Results_Main.csv"))
         dfProb.to_csv(os.path.join(result_root, "Results_Probabilistic.csv"))
 
-    def predict(self, image_path, label_path, predict_logger):
+    def predict(self, image_path, label_path, predict_logger, save_raw_probs=False):
         image_name = os.path.basename(image_path).split('.')[0]
 
         subdict = {
@@ -911,4 +917,4 @@ class Pipeline:
 
         subject = tio.Subject(**subdict)
 
-        self.test(predict_logger, save_results=True, test_subjects=[subject])
+        self.test(predict_logger, save_results=True, test_subjects=[subject], save_raw_probs=save_raw_probs)

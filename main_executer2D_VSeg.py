@@ -97,6 +97,10 @@ if __name__ == '__main__':
     parser.add_argument('--predictor_label_path',
                         default="/vol3/schatter/DS6/Dataset/BiasFieldCorrected/300/test_label/vk04.nii.gz",
                         help="Path to the label image to find the diff between label an output, ex:/home/test/ww25_label.nii ")
+    
+    parser.add_argument('--save_raw_probs',
+                        default=False, action=argparse.BooleanOptionalAction,
+                        help="Save the probability maps - direct output of the model without thresholding")
 
     parser.add_argument('--load_path',
                         # default="/home/schatter/Soumick/Output/DS6/OrigVol_MaskedFDIPv0_UNetV2/checkpoint",
@@ -221,21 +225,21 @@ if __name__ == '__main__':
     if args.test:
         pipeline.load(load_best=args.load_best)
         if args.model in [4, 5, 6, 7, 8]:
-            pipeline.test_prob(test_logger=test_logger, tag=("best" if args.load_best else "last"))
+            pipeline.test_prob(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
         else:
-            pipeline.test(test_logger=test_logger, tag=("best" if args.load_best else "last"))
+            pipeline.test(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
         torch.cuda.empty_cache()  # to avoid memory errors
 
         if args.testduo:
             pipeline.load(load_best=not args.load_best)
             if args.model in [4, 5, 6, 7, 8]:
-                pipeline.test_prob(test_logger=test_logger, tag=("best" if not args.load_best else "last"))
+                pipeline.test_prob(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)
             else:
-                pipeline.test(test_logger=test_logger, tag=("best" if not args.load_best else "last"))
+                pipeline.test(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)
             torch.cuda.empty_cache()  # to avoid memory errors
 
     if args.predict:
-        pipeline.predict(args.predictor_path, args.predictor_label_path, predict_logger=test_logger)
+        pipeline.predict(args.predictor_path, args.predictor_label_path, predict_logger=test_logger, save_raw_probs=args.save_raw_probs)
 
 
     # except Exception as error:
