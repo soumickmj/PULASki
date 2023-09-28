@@ -115,6 +115,12 @@ if __name__ == '__main__':
     parser.add_argument('--clip_grads',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To use deformation for training")
+    
+    parser.add_argument('--segloss_mode',
+                        default=0, type=int,
+                        help="0: Focal Tversky Loss (Default for DS6 and PULASki) \n"
+                             "1: Dice Loss \n"
+                             "2: Binary Cross Entropy Loss")
     parser.add_argument('--distloss',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To compute loss by comparing distributions of output and GT (for ProbUNet)")
@@ -124,6 +130,7 @@ if __name__ == '__main__':
                              "1: For Fréchet ResNeXt Distance (trained on single-channel MRIs) \n"
                              "2: GeomLoss Sinkhorn (Default cost function) \n"
                              "3: GeomLoss Hausdorff (Default cost function) using energy kernel (squared distances)")
+    
     parser.add_argument('--apex',
                         default=True, action=argparse.BooleanOptionalAction,
                         help="To use half precision on model weights.")

@@ -95,8 +95,16 @@ class Pipeline:
         self.num_worker = cmd_args.num_worker
 
         # Losses
+        if cmd_args.segloss_mode == 0:
+            self.criterion_segmentation = FocalTverskyLoss()
+        elif cmd_args.segloss_mode == 1:
+            self.criterion_segmentation = Dice()
+        elif cmd_args.segloss_mode == 2:
+            self.criterion_segmentation = torch.nn.BCELoss()
+        else:
+            sys.exit("Error: Invalid segloss_mode")
+        
         self.dice = Dice()
-        self.focalTverskyLoss = FocalTverskyLoss()
         self.iou = IOU()
         if self.modelID == 6: #SSN
             self.ssnloss = StochasticSegmentationNetworkLossMCIntegral(num_mc_samples=self.n_prob_test if self.n_prob_test% 2 == 0 else self.n_prob_test-1)
@@ -116,7 +124,6 @@ class Pipeline:
             self.l2_regularisation = l2_regularisation
         elif "Models.ProbUNetV2" in self.model.__module__:
             self.ProbFlag = 2
-            self.criterion_segmentation = FocalTverskyLoss()
             self.criterion_latent = distributions.kl_divergence
             self.criterion_latent_weight = 1.0
             self.criterion_segmentation_weight = 1.0
@@ -296,7 +303,7 @@ class Pipeline:
                                 if level > 0:  # then the output size is reduced, and hence interpolate to patch_size
                                     output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
                                 output = torch.sigmoid(output)
-                                floss += loss_ratios[level] * self.focalTverskyLoss(output, local_labels)
+                                floss += loss_ratios[level] * self.criterion_segmentation(output, local_labels)
                                 level += 1
                     elif self.ProbFlag == 1:
                         self.model.forward(local_batch, local_labels, training=True)
@@ -345,14 +352,14 @@ class Pipeline:
                                 output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
 
                             output = torch.sigmoid(output)
-                            floss2 += loss_ratios[level] * self.focalTverskyLoss(output, local_labels_xt)
+                            floss2 += loss_ratios[level] * self.criterion_segmentation(output, local_labels_xt)
                             level += 1
 
                         # -------------------------------------------------------------------------------------------
                         # Consistency loss
                         with autocast(enabled=False):
                             output1T = warp_image(output1.float(), displacement, multi=True)
-                        floss_c = self.focalTverskyLoss(torch.sigmoid(output2), output1T)
+                        floss_c = self.criterion_segmentation(torch.sigmoid(output2), output1T)
 
                         # -------------------------------------------------------------------------------------------
                         # Total loss
@@ -513,13 +520,13 @@ class Pipeline:
                                         output = torch.nn.functional.interpolate(input=output, size=self.patch_size[:2] if self.dimMode == 2 else self.patch_size)
 
                                     output = torch.sigmoid(output)
-                                    floss_iter += loss_ratios[level] * self.focalTverskyLoss(output, local_labels)
+                                    floss_iter += loss_ratios[level] * self.criterion_segmentation(output, local_labels)
                                     level += 1
                         elif self.ProbFlag == 1:
                             self.model.forward(local_batch, training=False)
                             output1 = self.model.sample(testing=True)
                             # output1 = torch.sigmoid(self.model.sample(testing=True))
-                            # floss_iter = self.focalTverskyLoss(output1, local_labels)
+                            # floss_iter = self.criterion_segmentation(output1, local_labels)
                             elbo = self.model.elbo(local_labels)
                             reg_loss = self.l2_regularisation(self.model.posterior) + self.l2_regularisation(self.model.prior) + self.l2_regularisation(self.model.fcomb.layers)
                             floss_iter = -elbo + self.model.reg_alpha * reg_loss
