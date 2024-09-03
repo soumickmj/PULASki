@@ -70,9 +70,10 @@ def load_model(model, optimizer, CHECKPOINT_PATH, batch_index='best', filename='
     print('Loading model...')
     checkpoint = torch.load(CHECKPOINT_PATH if CHECKPOINT_PATH.endswith(".pth") else os.path.join(CHECKPOINT_PATH, filename + str(batch_index) + '.pth'))
     model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
+    if 'optimizer' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer'])
     model.eval()
-    epoch = checkpoint["epoch"]
+    epoch = checkpoint["epoch"] if 'epoch' in checkpoint else 0
     return model, optimizer, epoch
 
 
@@ -85,11 +86,13 @@ def load_model_with_amp(model, optimizer, CHECKPOINT_PATH, batch_index='best', f
     model.cuda()
     checkpoint = torch.load(CHECKPOINT_PATH if CHECKPOINT_PATH.endswith(".pth") else os.path.join(CHECKPOINT_PATH, filename + str(batch_index) + '.pth'))
     model.load_state_dict(checkpoint['state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer'])
+    if 'optimizer' in checkpoint:
+        optimizer.load_state_dict(checkpoint['optimizer'])
     scaler = GradScaler()
-    scaler.load_state_dict(checkpoint['amp'])
+    if 'amp' in checkpoint:
+        scaler.load_state_dict(checkpoint['amp'])
     model.eval()
-    epoch = checkpoint["epoch"]
+    epoch = checkpoint["epoch"] if 'epoch' in checkpoint else 0
     return model, optimizer, scaler, epoch
 
 def load_model_huggingface(pretrained_model_name_or_path):
