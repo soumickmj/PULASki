@@ -15,7 +15,7 @@ import wandb
 from pipeline import Pipeline
 from Utils.logger import Logger
 from Utils.model_manager import getModel
-from Utils.vessel_utils import load_model, load_model_with_amp
+from Utils.vessel_utils import load_model, load_model_with_amp, load_model_huggingface
 
 __author__ = "Soumick Chatterjee"
 __copyright__ = "Copyright 2023, Faculty of Computer Science, Otto von Guericke University Magdeburg, Germany"
@@ -71,7 +71,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--prob_injection_at",
                         default="end",
-                        help="Where in the task UNet posterior net will inject, only for model 5: end (default) or bottom")
+                        help="Where in the task UNet posterior net will inject, only for model 5: end (default) or bottom [Will be ignored for huggeface models]")
 
     parser.add_argument('--train',
                         default=True, action=argparse.BooleanOptionalAction,
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     parser.add_argument("--n_prob_test",
                         type=int,
                         default=10,
-                        help="N number of predictions are to be optained during testing for the ProbUNets")
+                        help="N number of predictions are to be optained during testing for the ProbUNets [Will be ignored for huggeface models]")
     parser.add_argument('--predict',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To predict a segmentation output of the model and to get a diff between label and output")
@@ -100,13 +100,18 @@ if __name__ == '__main__':
                         default=False, action=argparse.BooleanOptionalAction,
                         help="Save the probability maps - direct output of the model without thresholding")
 
-    parser.add_argument('--load_path',
+    parser.add_argument('-load_huggingface',
+                        default="",
+                        help="Load model from huggingface model hub ex: 'soumickmj/DS6_UNetMSS3D_wDeform' [model param will be ignored]")
+
+    parser.add_argument('-load_path',
                         # default="/home/schatter/Soumick/Output/DS6/OrigVol_MaskedFDIPv0_UNetV2/checkpoint",
                         default="",
-                        help="Path to checkpoint of existing model to load, ex:/home/model/checkpoint")
+                        help="Path to checkpoint of existing model to load, ex:/home/model/checkpoint/ [If this is supplied, load_huggingface will be ignored] ")
     parser.add_argument('--load_best',
                         default=False, action=argparse.BooleanOptionalAction,
-                        help="Specifiy whether to load the best checkpoiont or the last. Also to be used if Train and Test both are true.")
+                        help="Specifiy whether to load the best checkpoiont or the last [Only if load_path is supplied]")
+    
     parser.add_argument('--deform',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To use deformation for training")
@@ -118,7 +123,7 @@ if __name__ == '__main__':
                         default=0, type=int,
                         help="0: Focal Tversky Loss (Default for DS6 and PULASki) \n"
                              "1: Dice Loss \n"
-                             "2: Binary Cross Entropy Loss (BCEWithLogitsLoss)")
+                             "2: Binary Cross Entropy Loss (BCEWithLogitsLoss) [Option 2 might not work for huggeface models]")
     parser.add_argument('--distloss',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="To compute loss by comparing distributions of output and GT (for ProbUNet)")
@@ -155,7 +160,7 @@ if __name__ == '__main__':
                         help="Patch size of the input volume")
     parser.add_argument("--slice2D_shape",
                         default="",
-                        help="For 2D models, set it to the desired shape. Or blank")
+                        help="For 2D models, set it to the desired shape. Or blank [Will be ignored for huggingface models]")
     parser.add_argument("--stride_depth",
                         type=int,
                         default=16,
@@ -190,6 +195,8 @@ if __name__ == '__main__':
     DATASET_FOLDER = args.dataset_path
     OUTPUT_PATH = args.output_path
 
+    os.makedirs(OUTPUT_PATH, exist_ok=True)
+
     LOAD_PATH = args.load_path
     CHECKPOINT_PATH = OUTPUT_PATH + "/" + MODEL_NAME + '/checkpoint/'
     TENSORBOARD_PATH_TRAINING = OUTPUT_PATH + "/" + MODEL_NAME + '/tensorboard/tensorboard_training/'
@@ -202,7 +209,10 @@ if __name__ == '__main__':
     test_logger = Logger(MODEL_NAME + '_test', LOGGER_PATH).get_logger()
 
     # Model
-    model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at, no_outact_op=(args.segloss_mode==2))
+    if args.load_huggingface:
+        model = load_model_huggingface(args.load_huggingface)
+    else:
+        model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at, no_outact_op=(args.segloss_mode==2))
     model.cuda()
     print("It's a 2D model!!" if bool(args.slice2D_shape) else "It's a 3D model!!")
 
