@@ -7,11 +7,47 @@ The preliminary idea was presented at the SIAM Conference on Mathematics of Data
 
 Then, the method and the initial results were presented at the ISMRM 2023 in June 2023, titled "Exploiting the inter-rater disagreement to improve probabilistic segmentation" (Program Number: 0810). Abstract available on [ResearchGate](https://www.researchgate.net/publication/370978766_Exploiting_the_inter-rater_disagreement_to_improve_probabilistic_segmentation) and the talk is available on [YouTube](https://www.youtube.com/watch?v=99ECgbWvME8) 
 
+## Model Weights
+The weights of the main Probabilistic UNet (PULASki + Baseline) models trained during this research, have been made publicly available on Huggingface, and they can be found in the collection: [https://huggingface.co/collections/soumickmj/pulaski-66d9d35dfef91c84d140de8d](https://huggingface.co/collections/soumickmj/pulaski-66d9d35dfef91c84d140de8d). The designations "VSeg" and "MSSeg" within the model names indicate that the respective model was trained for vessel segmentation and multiple sclerosis segmentation tasks, respectively. The PULASki models have "Hausdorff", "Sinkhorn" or "FID" in their names, indicating which statistical distance was used to train that particular model, while "Base" in their names signify that they are the baseline ProbUNet models (i.e. trained with the Focal-tversky loss or FTL). The model names also indicate whether they are 2D or 3D. 
+
+The weights can be directly be used pulling from Huggingface with the updated version of this pipeline, or the weights can be downloaded using the AutoModel class from the transformers package, saved as a checkpoint, and then the path to this saved checkpoint can be supplied to the pipeline using "-load_path" argument.
+
+Here's an example of how to use directly use weights from huggingface:
+```bash
+-load_huggingface soumickmj/PULASki_ProbUNet2D_Hausdorff_VSeg
+```
+Additional parameter "-load_huggingface" must be supplied along with the other desired paramters. Technically, this paramter can also be used to supply segmentation models other than the models used in DS6. 
+
+Here is an example of how to save the weights locally (must be saved with .pth extension) and then use it with this pipeline:
+```python
+from transformers import AutoModel
+modelHF = AutoModel.from_pretrained("soumickmj/PULASki_ProbUNet2D_Hausdorff_VSeg", trust_remote_code=True)
+torch.save({'state_dict': modelHF.model.state_dict()}, "/path/to/checkpoint/model.pth")
+```
+To run this pipeline with these downloaded weights, the path to the checkpoint must then be passed as preweights_path, as an additional parameter along with the other desired parameters:
+```bash
+-load_path /path/to/checkpoint/model.pth
+```
+
 ## Credits
 
 If you like this repository, please click on Star!
 
-If you use this approach in your research or use codes from this repository, please cite the paper(s) in your publications.
+If you use this approach in your research or use codes from this repository or the weights from Huggingface, please cite the following in your publications:
+
+> [Chatterjee, S., Gaidzik, F., Sciarra, A., Mattern, H., Janiga, G., Speck, O., Nuernberger, A., & Pathiraja, S. (2023). PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation. arXiv preprint arXiv:2312.15686.](https://arxiv.org/abs/2312.15686)
+
+BibTeX entry:
+
+```bibtex
+@article{chatterjee2023pulaski,
+  title={PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation},
+  author={Chatterjee, Soumick and Gaidzik, Franziska and Sciarra, Alessandro and Mattern, Hendrik and Janiga, G{\'a}bor and Speck, Oliver and N{\"u}rnberger, Andreas and Pathiraja, Sahani},
+  journal={arXiv preprint arXiv:2312.15686},
+  year={2023}
+}
+
+```
 
 The original codebase is from the DS6 project (https://github.com/soumickmj/DS6). Initial code was also published as a part of that same repo (Branch: [ProbVSeg](https://github.com/soumickmj/DS6/tree/ProbVSeg)).
 
