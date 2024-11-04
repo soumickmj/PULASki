@@ -7,6 +7,7 @@ import os
 import random
 import sys
 from glob import glob
+from types import SimpleNamespace
 
 import wandb
 import nibabel
@@ -33,6 +34,7 @@ from Utils.elastic_transform import RandomElasticDeformation, warp_image
 from Utils.fid.fidloss import FastFID
 from Models.SSN.trainer.losses import StochasticSegmentationNetworkLossMCIntegral
 from Models.VIMH.loss import VIMHLoss
+from Models.DPersona.initialise_optimisation import init_optimisation
 from Utils.result_analyser import *
 from Utils.vessel_utils import (convert_and_save_tif, create_diff_mask,
                                 create_mask, load_model, load_model_with_amp,
@@ -116,6 +118,16 @@ class Pipeline:
             self.ssnloss = StochasticSegmentationNetworkLossMCIntegral(num_mc_samples=self.n_prob_test if self.n_prob_test% 2 == 0 else self.n_prob_test-1)
         elif self.modelID == 7: #VIMH
             self.vimhloss = VIMHLoss(loss_func=nn.NLLLoss(), NUM_MODELS=self.model.num_models)
+        elif self.modelID in [9, 10]: #DPersona
+            stage = 1 if self.modelID == 9 else 2
+            if stage == 2:
+                if bool(cmd_args.load_stageI_DPersona):
+                    print("Loading Stage I DPersona...")
+                    self.model, _, _ = load_model(self.model, None, cmd_args.load_stageI_DPersona)
+                else:
+                    sys.exit("Error: Stage II DPersona (Model ID 10) requires Stage I (Model ID 9) DPersona to be loaded by supplying -load_stageI_DPersona.")
+            self.params = SimpleNamespace(stage=stage, mask_num=cmd_args.n_prob_test, latent_dim=3, prior_sample_num=10, beta=0.5)
+            self.optimizer, self.dpersonaloss = init_optimisation(self.model, stage=self.params.stage)
 
         self.LOWEST_LOSS = float('inf')
         self.test_set = test_set
@@ -242,7 +254,6 @@ class Pipeline:
             total_floss = 0
             batch_index = 0
             for batch_index, patches_batch in enumerate(tqdm(self.train_loader)):
-
                 local_batch = self.normaliser(patches_batch['img'][tio.DATA].float().cuda())
                 if self.plauslabels:
                     labels = [k for k in patches_batch.keys() if "p_label" in k]
@@ -252,7 +263,7 @@ class Pipeline:
                 else:
                     lbl = "label"
                 local_labels = patches_batch[lbl][tio.DATA].float().cuda()
-                if self.plauslabels and self.distloss:
+                if self.plauslabels and (self.distloss or self.modelID in [9, 10]):
                     local_plauslabels = []
                     for l in labels:
                         local_plauslabels.append(patches_batch[l][tio.DATA])
@@ -287,7 +298,7 @@ class Pipeline:
                     output1 = 0
                     level = 0
 
-                    if hasattr(self.model, 'num_classes') and self.model.num_classes != 1:
+                    if not(self.modelID in [9, 10]) and hasattr(self.model, 'num_classes') and self.model.num_classes != 1:
                         if local_labels.shape[1] == 1:
                             local_labels = local_labels.squeeze(1).to(torch.int64)
                         else:
@@ -302,6 +313,8 @@ class Pipeline:
                         elif self.modelID == 7: #VIMH
                             soft_out, _, kl = self.model(local_batch, samples=self.n_prob_test)
                             floss, output = self.vimhloss(soft_out, kl, local_labels, train=True)
+                        elif self.modelID in [9, 10]: #DPersona
+                            floss, output = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
                         else:
                             for output in self.model(local_batch): 
                                 if level == 0:
@@ -471,7 +484,7 @@ class Pipeline:
                 else:
                     lbl = "label"
                 local_labels = patches_batch[lbl][tio.DATA].float().cuda()
-                if self.plauslabels and self.distloss:
+                if self.plauslabels and (self.distloss or self.modelID in [9, 10]):
                     labels = [k for k in patches_batch.keys() if "p_label" in k]
                     if self.plauslabel_mode in [1,3]:
                         labels += ["label"]
@@ -494,6 +507,7 @@ class Pipeline:
                 floss_iter = 0
                 output1 = 0
                 classMode = 0
+                isOK = True
                 try:
                     with autocast(enabled=self.with_apex):
                         # Forward propagation
@@ -518,6 +532,10 @@ class Pipeline:
                             elif self.modelID == 7: #VIMH
                                 soft_out, _, kl = self.model(local_batch, samples=self.n_prob_test)
                                 floss_iter, output1 = self.vimhloss(soft_out, kl, local_labels, train=False)
+                            elif self.modelID in [9, 10]: #DPersona
+                                floss_iter, output1 = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
+                                if self.modelID == 10: #Stage II returns all the 10 results, not just one. So, a random sample is chosen every iteraction for val-Dice calculation
+                                    output1 = random.choice(output1.split(1, dim=1))
                             else:
                                 for output in self.model(local_batch):
                                     if level == 0:
@@ -555,21 +573,23 @@ class Pipeline:
                                 # floss_iter = self.criterion_segmentation_weight * loss_segmentation + self.criterion_latent_weight * loss_latent
                         
                 except Exception as error:
+                    isOK = False
                     self.logger.exception(error)
 
-                if classMode == 1:
-                    output1 = output1.unsqueeze(1).to(local_batch.dtype)
-                    local_labels = local_labels.unsqueeze(1).to(local_batch.dtype)
-                elif classMode == 2:
-                    output1 = torch.nn.functional.one_hot(output1, self.model.num_classes).to(local_batch.dtype)
-                    local_labels = torch.nn.functional.one_hot(local_labels, self.model.num_classes).to(local_batch.dtype)
-                
-                floss += floss_iter
-                if self.ProbFlag == 0 and self.modelID in [1,2,3]:
-                    dl, ds = self.dice(self.out_activation(output1), local_labels)
-                else:
-                    dl, ds = self.dice(output1, local_labels)
-                dScore += ds.detach().item()
+                if isOK:
+                    if classMode == 1:
+                        output1 = output1.unsqueeze(1).to(local_batch.dtype)
+                        local_labels = local_labels.unsqueeze(1).to(local_batch.dtype)
+                    elif classMode == 2:
+                        output1 = torch.nn.functional.one_hot(output1, self.model.num_classes).to(local_batch.dtype)
+                        local_labels = torch.nn.functional.one_hot(local_labels, self.model.num_classes).to(local_batch.dtype)
+                    
+                    floss += floss_iter
+                    if self.ProbFlag == 0 and self.modelID in [1,2,3]:
+                        dl, ds = self.dice(self.out_activation(output1), local_labels)
+                    else:
+                        dl, ds = self.dice(output1, local_labels)
+                    dScore += ds.detach().item()
 
         # Average the losses
         floss = floss / no_patches
@@ -578,10 +598,11 @@ class Pipeline:
         self.logger.info("Epoch:" + str(tainingIndex) + process + "..." +
                          "\n MainLoss:" + str(floss) +
                          "\n DiceScore:" + str(dScore))
-        if self.dimMode == 3:
-            write_summary(writer, self.logger, tainingIndex, local_labels[0][0][6], output1[0][0][6], floss, dScore, 0, 0)
-        else:
-            write_summary(writer, self.logger, tainingIndex, local_labels[0][0], output1[0][0], floss, dScore, 0, 0)
+        if isOK:
+            if self.dimMode == 3:
+                write_summary(writer, self.logger, tainingIndex, local_labels[0][0][6], output1[0][0][6], floss, dScore, 0, 0)
+            else:
+                write_summary(writer, self.logger, tainingIndex, local_labels[0][0], output1[0][0], floss, dScore, 0, 0)
         wandb.log({"loss": floss})
         wandb.log({"Dice": dScore})
 
@@ -790,8 +811,11 @@ class Pipeline:
                             # local_labels = torch.argmax(local_labels, 1)
                             classMode = 2
 
-                    with autocast(enabled=self.with_apex):
-                        if self.ProbFlag == 0:          
+                    with autocast(enabled=self.with_apex):                                    
+                        if self.modelID in [9, 10]: # DPersona
+                            outputs = self.model.test_step(images, sample_num=self.n_prob_test).detach().cpu()
+                            outputs = list(outputs.split(1, dim=1))
+                        elif self.ProbFlag == 0:          
                             outputs = []
                             for nP in range(self.n_prob_test):              
                                 if self.modelID == 6: #SSN

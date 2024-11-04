@@ -54,7 +54,7 @@ if __name__ == '__main__':
                         default="prova_3DVSeg",
                         help="Name of the model")
     parser.add_argument("--datajson_path", 
-                        default="VSeg_local",
+                        default="VSeg_FCM",
                         help="Path to the json file (without the .json extension, only the name) which contains the path to the data and output. Must be present inside the support folder."
                              "Must contain dataset_path, the folder which must be further divided folders into train,validate,test, train_label,validate_label and test_label."
                              "Must contain output_path")

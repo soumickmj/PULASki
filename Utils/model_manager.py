@@ -19,6 +19,7 @@ from Models.VIMH.unet_Ensemble import UNet_Ensemble as VIMH2D
 from Models.VIMH.unet_Ensemble3D import UNet_Ensemble as VIMH3D
 from Models.dounet2d import UNet as DOUNet2D
 from Models.dounet3d import UNet as DOUNet3D
+from Models.DPersona.DPersona import DPersona
 
 __author__ = "Soumick Chatterjee"
 __copyright__ = "Copyright 2023, Faculty of Computer Science, Otto von Guericke University Magdeburg, Germany"
@@ -37,7 +38,7 @@ MODEL_PROBABILISTIC_UNET = 4
 def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end", no_outact_op=False): #Send model params from outside
     defaultModel = U_Net() #Default
     if is2D:
-        if model_no not in [1, 2, 3, 4, 5, 6, 7, 8]:
+        if model_no not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]:
             sys.exit(f"Invalid model ID {model_no} for 2D operations.")
         if model_no in [4]:
             print(f"Warning: Even though {model_no} has been implemented for 2D operations, it has bugs. Use with caution!")
@@ -57,7 +58,19 @@ def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end", no_ou
             6: StochasticDeepMedic(input_channels=1, num_classes=2, scale_factors=((5, 5), (3, 3), (1, 1)), diagonal=True),
             # 7: VIMH(num_models=n_prob_test, mutliHead_layer="BDec2", num_in=1, num_classes=1), #This was the original plan. But the memory requirement is too high. So, we are using the following line instead (i.e. 4 models, like the original work).
             7: VIMH2D(num_models=4, mutliHead_layer="BDec2", num_in=1, num_classes=2),
-            8: DOUNet2D()
+            8: DOUNet2D(),
+            9: DPersona(input_channels=1, num_classes=1, #Stage I
+                        latent_dim=3, 
+                        no_convs_fcomb=4,
+                        num_experts=n_prob_test, 
+                        reg_factor=0.00001,
+                        original_backbone=False),
+            10: DPersona(input_channels=1, num_classes=1, #Stage II
+                        latent_dim=3, 
+                        no_convs_fcomb=4,
+                        num_experts=n_prob_test, 
+                        reg_factor=0.00001,
+                        original_backbone=False)
         }
     else:
         if model_no not in [1, 2, 3, 4, 5, 6, 7, 8]:

@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model",
                         type=int,
-                        default=5,
+                        default=10,
                         help="1{U-Net}; \n"
                              "2{U-Net_Deepsup}; \n"
                              "3{Attention-U-Net}; \n"
@@ -51,7 +51,9 @@ if __name__ == '__main__':
                              "5{V2-Probabilistic-U-Net};\n"
                              "6{S-S-N};\n"
                              "7{VI-MH};\n"
-                             "8{DO-UNet};")
+                             "8{DO-UNet};\n"
+                             "9{DPersona-StageI};\n"
+                             "10{DPersona-StageII};")
     parser.add_argument("--model_name",
                         default="prova_2DMSSeg",
                         help="Name of the model")
@@ -113,6 +115,10 @@ if __name__ == '__main__':
     parser.add_argument('--load_best',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="Specifiy whether to load the best checkpoiont or the last [Only if load_path is supplied]")
+    
+    parser.add_argument('-load_stageI_DPersona',
+                        default="/project/schatter/FranziVSeg/Output/MSSeg_FLAIR_Fold0/DPersonaStageI_At1_pLBL4TrainANDVal/checkpoint/checkpointbest.pth",
+                        help="[Only for D-Persona] Load Stage I weights (Model ID 9) for running Stage II (Model ID 10) of D-Persona")
     
     parser.add_argument('--deform',
                         default=False, action=argparse.BooleanOptionalAction,
