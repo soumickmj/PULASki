@@ -1,4 +1,4 @@
 {
-    "dataset_path": "/media/Enterprise/ProbUNet_MultiSc/Data/Fold0_Flair",
+    "dataset_path": "/media/Enterprise/ProbUNet_MultiSc/Data/FLAIR_Fold0",
     "output_path": "/media/Enterprise/ProbUNet_MultiSc/Output/MSSeg_FLAIR_Fold0"
 }
