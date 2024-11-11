@@ -38,7 +38,7 @@ from Models.DPersona.initialise_optimisation import init_optimisation
 from Utils.result_analyser import *
 from Utils.vessel_utils import (convert_and_save_tif, create_diff_mask,
                                 create_mask, load_model, load_model_with_amp,
-                                save_model, write_summary)
+                                save_model, write_summary, EarlyStopping)
 
 __author__ = "Soumick Chatterjee"
 __copyright__ = "Copyright 2023, Faculty of Computer Science, Otto von Guericke University Magdeburg, Germany"
@@ -128,6 +128,8 @@ class Pipeline:
                     sys.exit("Error: Stage II DPersona (Model ID 10) requires Stage I (Model ID 9) DPersona to be loaded by supplying -load_stageI_DPersona.")
             self.params = SimpleNamespace(stage=stage, mask_num=cmd_args.n_prob_test, latent_dim=3, prior_sample_num=10, beta=0.5)
             self.optimizer, self.dpersonaloss = init_optimisation(self.model, stage=self.params.stage)
+        elif self.modelID == 11: #CIMD
+            self.early_stopping = EarlyStopping(patience=5, delta=0)
 
         self.LOWEST_LOSS = float('inf')
         self.test_set = test_set
@@ -315,6 +317,8 @@ class Pipeline:
                             floss, output = self.vimhloss(soft_out, kl, local_labels, train=True)
                         elif self.modelID in [9, 10]: #DPersona
                             floss, output = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
+                        elif self.modelID == 11: #CIMD
+                            _, _, _, floss, output = self.model.run_step(local_batch, local_labels)
                         else:
                             for output in self.model(local_batch): 
                                 if level == 0:
@@ -392,31 +396,32 @@ class Pipeline:
                                  "\n MainLoss:" + str(floss))
 
                 # Calculating gradients
-                if self.with_apex:
-                    if type(floss) is list:
-                        for i in range(len(floss)):
-                            if i+1 == len(floss): #final loss
-                                self.scaler.scale(floss[i]).backward()
-                            else:
-                                self.scaler.scale(floss[i]).backward(retain_graph=True)
-                        floss = torch.sum(torch.stack(floss))
+                if self.modelID not in [11,]:
+                    if self.with_apex:
+                        if type(floss) is list:
+                            for i in range(len(floss)):
+                                if i+1 == len(floss): #final loss
+                                    self.scaler.scale(floss[i]).backward()
+                                else:
+                                    self.scaler.scale(floss[i]).backward(retain_graph=True)
+                            floss = torch.sum(torch.stack(floss))
+                        else:
+                            self.scaler.scale(floss).backward()
+
+                        if self.clip_grads:
+                            self.scaler.unscale_(self.optimizer)
+                            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1) 
+                            torch.nn.utils.clip_grad_value_(self.model.parameters(), 1) 
+                        
+                        self.scaler.step(self.optimizer)
+                        self.scaler.update()
                     else:
-                        self.scaler.scale(floss).backward()
+                        floss.backward()
+                        if self.clip_grads:
+                            # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
+                            torch.nn.utils.clip_grad_value_(self.model.parameters(), 1)
 
-                    if self.clip_grads:
-                        self.scaler.unscale_(self.optimizer)
-                        # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1) 
-                        torch.nn.utils.clip_grad_value_(self.model.parameters(), 1) 
-                    
-                    self.scaler.step(self.optimizer)
-                    self.scaler.update()
-                else:
-                    floss.backward()
-                    if self.clip_grads:
-                        # torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1)
-                        torch.nn.utils.clip_grad_value_(self.model.parameters(), 1)
-
-                    self.optimizer.step()
+                        self.optimizer.step()
 
                 if training_batch_index % 50 == 0:  # Save best metric evaluation weights                        
                     write_summary(self.writer_training, self.logger, training_batch_index, focalTverskyLoss=floss.detach().item())
@@ -451,8 +456,16 @@ class Pipeline:
             save_model(self.checkpoint_path, chk_dict)
 
             torch.cuda.empty_cache()  # to avoid memory errors
-            self.validate(training_batch_index, epoch)
-            torch.cuda.empty_cache()  # to avoid memory errors
+            
+            if self.modelID != 11:
+                self.validate(training_batch_index, epoch)
+                torch.cuda.empty_cache()  # to avoid memory errors
+            else:
+                self.early_stopping(total_floss)
+                if self.early_stopping.early_stop:
+                    self.logger.info("Early stopping triggered...")
+                    print("Early stopping triggered...")
+                    break
 
         return self.model
 
@@ -536,6 +549,8 @@ class Pipeline:
                                 floss_iter, output1 = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
                                 if self.modelID == 10: #Stage II returns all the 10 results, not just one. So, a random sample is chosen every iteraction for val-Dice calculation
                                     output1 = random.choice(output1.split(1, dim=1))
+                            elif self.modelID == 11: #CIMD
+                                sys.exit("Error: Model ID 11 is not supported for validation.")
                             else:
                                 for output in self.model(local_batch):
                                     if level == 0:
@@ -813,7 +828,7 @@ class Pipeline:
 
                     with autocast(enabled=self.with_apex):                                    
                         if self.modelID in [9, 10]: # DPersona
-                            outputs = self.model.test_step(images, sample_num=self.n_prob_test).detach().cpu()
+                            outputs = self.model.test_step(local_batch, sample_num=self.n_prob_test).detach().cpu()
                             outputs = list(outputs.split(1, dim=1))
                         elif self.ProbFlag == 0:          
                             outputs = []

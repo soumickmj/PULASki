@@ -43,7 +43,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--model",
                         type=int,
-                        default=10,
+                        default=11,
                         help="1{U-Net}; \n"
                              "2{U-Net_Deepsup}; \n"
                              "3{Attention-U-Net}; \n"
@@ -53,7 +53,8 @@ if __name__ == '__main__':
                              "7{VI-MH};\n"
                              "8{DO-UNet};\n"
                              "9{DPersona-StageI};\n"
-                             "10{DPersona-StageII};")
+                             "10{DPersona-StageII};\n"
+                             "11{C-I-M-D};\n")
     parser.add_argument("--model_name",
                         default="prova_2DMSSeg",
                         help="Name of the model")
@@ -101,7 +102,7 @@ if __name__ == '__main__':
                         help="Path to the label image to find the diff between label an output, ex:/home/test/ww25_label.nii ")
     
     parser.add_argument('--save_raw_probs',
-                        default=False, action=argparse.BooleanOptionalAction,
+                        default=True, action=argparse.BooleanOptionalAction,
                         help="Save the probability maps - direct output of the model without thresholding")
 
     parser.add_argument('-load_huggingface',
@@ -109,7 +110,7 @@ if __name__ == '__main__':
                         help="Load model from huggingface model hub ex: 'soumickmj/DS6_UNetMSS3D_wDeform' [model param will be ignored]")
 
     parser.add_argument('-load_path',
-                        # default="/home/schatter/Soumick/Output/DS6/OrigVol_MaskedFDIPv0_UNetV2/checkpoint",
+                        #default="/project/schatter/FranziVSeg/Output/MSSeg_FLAIR_Fold0/DPersonaStageII_At1_pLBL4TrainANDVal/checkpoint",
                         default="",
                         help="Path to checkpoint of existing model to load, ex:/home/model/checkpoint/ [If this is supplied, load_huggingface will be ignored] ")
     parser.add_argument('--load_best',
@@ -117,7 +118,7 @@ if __name__ == '__main__':
                         help="Specifiy whether to load the best checkpoiont or the last [Only if load_path is supplied]")
     
     parser.add_argument('-load_stageI_DPersona',
-                        default="/project/schatter/FranziVSeg/Output/MSSeg_FLAIR_Fold0/DPersonaStageI_At1_pLBL4TrainANDVal/checkpoint/checkpointbest.pth",
+                        default="",
                         help="[Only for D-Persona] Load Stage I weights (Model ID 9) for running Stage II (Model ID 10) of D-Persona")
     
     parser.add_argument('--deform',
@@ -148,7 +149,7 @@ if __name__ == '__main__':
 
     parser.add_argument("--batch_size",
                         type=int,
-                        default=60,
+                        default=2,
                         help="Batch size for training")
     parser.add_argument("--batch_size_fidloss",
                         type=int,
@@ -247,16 +248,22 @@ if __name__ == '__main__':
 
     if args.test:
         pipeline.load(load_best=args.load_best)
-        if args.model in [4, 5, 6, 7, 8]:
-            pipeline.test_prob(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
+        if args.model in [4, 5, 6, 7, 8, 9, 10, 11]:
+            if args.model == 11 and args.load_best:
+                print("Cannot load best model for testing model ID 11. Skipping...")
+            else:
+                pipeline.test_prob(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
         else:
             pipeline.test(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
         torch.cuda.empty_cache()  # to avoid memory errors
 
         if args.testduo:
             pipeline.load(load_best=not args.load_best)
-            if args.model in [4, 5, 6, 7, 8]:
-                pipeline.test_prob(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)
+            if args.model in [4, 5, 6, 7, 8, 9, 10, 11]:                
+                if args.model == 11 and not args.load_best:
+                    print("Cannot load best model for testing model ID 11. Skipping...")
+                else:
+                    pipeline.test_prob(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)
             else:
                 pipeline.test(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)
             torch.cuda.empty_cache()  # to avoid memory errors
