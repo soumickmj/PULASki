@@ -46,7 +46,7 @@ class CIMD(nn.Module):
             use_fp16=args['use_fp16'],
             image_size=128,
             in_channels=input_channels+1,
-            out_channels=num_classes,
+            out_channels=num_classes*2,
             num_channels=128,
             num_res_blocks=2,
             num_heads=1,

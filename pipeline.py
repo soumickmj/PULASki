@@ -423,13 +423,16 @@ class Pipeline:
 
                         self.optimizer.step()
 
+                if type(floss) is torch.Tensor:
+                    floss = floss.detach().item()
+
                 if training_batch_index % 50 == 0:  # Save best metric evaluation weights                        
-                    write_summary(self.writer_training, self.logger, training_batch_index, focalTverskyLoss=floss.detach().item())
-                    wandb.log({"loss": floss.detach().item()})
+                    write_summary(self.writer_training, self.logger, training_batch_index, focalTverskyLoss=floss)
+                    wandb.log({"loss": floss})
                 training_batch_index += 1
 
                 # Initialising the average loss metrics
-                total_floss += floss.detach().item()
+                total_floss += floss
 
                 if self.deform:
                     del elastic
@@ -437,6 +440,7 @@ class Pipeline:
 
             # Calculate the average loss per batch in one epoch
             total_floss /= (batch_index + 1.0)
+            wandb.log({"epoch_loss": total_floss}, step=epoch)
 
             # Print every epoch
             self.logger.info("Epoch:" + str(epoch) + " Average Training..." +
@@ -609,6 +613,9 @@ class Pipeline:
         # Average the losses
         floss = floss / no_patches
         dScore = dScore / no_patches
+        wandb.log({"epoch_val_loss": floss}, step=epoch)
+        wandb.log({"epoch_val_dice": dScore}, step=epoch)
+        
         process = ' Validating'
         self.logger.info("Epoch:" + str(tainingIndex) + process + "..." +
                          "\n MainLoss:" + str(floss) +
@@ -618,9 +625,7 @@ class Pipeline:
                 write_summary(writer, self.logger, tainingIndex, local_labels[0][0][6], output1[0][0][6], floss, dScore, 0, 0)
             else:
                 write_summary(writer, self.logger, tainingIndex, local_labels[0][0], output1[0][0], floss, dScore, 0, 0)
-        wandb.log({"loss": floss})
-        wandb.log({"Dice": dScore})
-
+        
         if self.LOWEST_LOSS > floss:  # Save best metric evaluation weights
             self.LOWEST_LOSS = floss
             self.logger.info(
@@ -871,6 +876,7 @@ class Pipeline:
                             output = torch.nn.functional.one_hot(output, self.model.num_classes).to(local_batch.dtype).detach().cpu()
                         if self.dimMode == 2:
                             output = output.unsqueeze(-3)
+
                         output = torch.movedim(output, -3, -1).type(local_batch.type()) 
                         aggregators[nP].add_batch(output, locations)
                         del output
