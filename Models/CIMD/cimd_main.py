@@ -124,6 +124,12 @@ class CIMD(nn.Module):
     def forward_backward(self, batch, cond):
         self.microbatch = self.microbatch if self.microbatch > 0 else batch.shape[0]
         self.mp_trainer.zero_grad()
+
+        total_loss = 0
+        total_lossseg = 0
+        total_losscls = 0
+        total_lossrec = 0
+        samples = []
         for i in range(0, batch.shape[0], self.microbatch):
             micro = batch[i : i + self.microbatch]
             micro_cond = {
@@ -158,7 +164,14 @@ class CIMD(nn.Module):
             lossrec =loss*0
             
             self.mp_trainer.backward(loss)
-            return lossseg.detach(), losscls.detach(), lossrec.detach(), loss.detach(), sample
+
+            total_loss += loss.item()
+            total_lossseg += lossseg.item()
+            total_losscls += losscls.item()
+            total_lossrec += lossrec.item()
+            samples.append(sample)
+
+        return total_lossseg, total_losscls, total_lossrec, total_loss, torch.cat(samples, dim=0)
 
     def _update_ema(self):
         for rate, params in zip(self.ema_rate, self.ema_params):
