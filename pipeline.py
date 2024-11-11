@@ -831,7 +831,7 @@ class Pipeline:
                             outputs = self.model.test_step(local_batch, sample_num=self.n_prob_test).detach().cpu()
                             outputs = list(outputs.split(1, dim=1))
                         elif self.modelID == 11: #CIMD
-                            outputs = self.model.run_inference(local_batch, time=10)
+                            outputs = self.model.run_inference(local_batch)
                         elif self.ProbFlag == 0:          
                             outputs = []
                             for nP in range(self.n_prob_test):              

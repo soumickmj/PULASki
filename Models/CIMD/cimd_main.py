@@ -40,10 +40,11 @@ class CIMD(nn.Module):
             clip_denoised=True
         )
         self.__dict__.update(args)
-
-        modelargs = dict(
+        
+        modelargs = model_and_diffusion_defaults()
+        modelargs.update(dict(
             use_fp16=args['use_fp16'],
-            image_size=64,
+            image_size=128,
             in_channels=input_channels+1,
             out_channels=num_classes,
             num_channels=128,
@@ -53,13 +54,12 @@ class CIMD(nn.Module):
             learn_sigma=True,
             class_cond=False,
             use_scale_shift_norm=False,
-            attention_resolutions=16,
+            attention_resolutions="16",
             diffusion_steps=1000,
             noise_schedule="linear",
             rescale_learned_sigmas=False,
             rescale_timesteps=False
-        )
-        modelargs.update(model_and_diffusion_defaults())
+        ))
         self.model, self.diffusion, self.prior, self.posterior = create_model_and_diffusion(**modelargs)
     
         self.schedule_sampler = create_named_schedule_sampler(args["schedule_sampler"], self.diffusion,  maxt=args['maxt'])
@@ -117,7 +117,7 @@ class CIMD(nn.Module):
                 time=time,
             )            
             
-            outputs.append(torch.tensor(sample))
+            outputs.append(sample.detach())
 
         return outputs
 
