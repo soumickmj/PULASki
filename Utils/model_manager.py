@@ -21,6 +21,7 @@ from Models.dounet2d import UNet as DOUNet2D
 from Models.dounet3d import UNet as DOUNet3D
 from Models.DPersona.DPersona import DPersona
 from Models.CIMD.cimd_main import CIMD
+from Models.BerDiff.berdiff_main import BerDiff
 
 __author__ = "Soumick Chatterjee"
 __copyright__ = "Copyright 2023, Faculty of Computer Science, Otto von Guericke University Magdeburg, Germany"
@@ -39,7 +40,7 @@ MODEL_PROBABILISTIC_UNET = 4
 def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end", no_outact_op=False): #Send model params from outside
     defaultModel = U_Net() #Default
     if is2D:
-        if model_no not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]:
+        if model_no not in [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]:
             sys.exit(f"Invalid model ID {model_no} for 2D operations.")
         if model_no in [4]:
             print(f"Warning: Even though {model_no} has been implemented for 2D operations, it has bugs. Use with caution!")
@@ -72,7 +73,8 @@ def getModel(model_no, is2D=False, n_prob_test=0, prob_injection_at="end", no_ou
                         num_experts=n_prob_test, 
                         reg_factor=0.00001,
                         original_backbone=False),
-            11: CIMD(num_experts=n_prob_test, input_channels=1, num_classes=1)
+            11: CIMD(num_experts=n_prob_test, input_channels=1, num_classes=1),
+            12: BerDiff(num_experts=n_prob_test, input_channels=1, num_classes=1),
         }
     else:
         if model_no not in [1, 2, 3, 4, 5, 6, 7, 8]:

@@ -54,7 +54,8 @@ if __name__ == '__main__':
                              "8{DO-UNet};\n"
                              "9{DPersona-StageI};\n"
                              "10{DPersona-StageII};\n"
-                             "11{C-I-M-D};\n")
+                             "11{C-I-M-D};\n"
+                             "12{Ber-Diff};\n")
     parser.add_argument("--model_name",
                         default="prova_2DVSeg",
                         help="Name of the model")
@@ -247,9 +248,9 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()  # to avoid memory errors
 
     if args.test:
-        pipeline.load(load_best=args.load_best)
-        if args.model in [4, 5, 6, 7, 8, 9, 10, 11]:
-            if args.model == 11 and args.load_best:
+        pipeline.load(load_best=args.load_best) 
+        if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12]:
+            if args.model in [11, 12] and args.load_best:
                 print("Cannot load best model for testing model ID 11. Skipping...")
             else:
                 pipeline.test_prob(test_logger=test_logger, tag=("best" if args.load_best else "last"), save_raw_probs=args.save_raw_probs)
@@ -259,8 +260,8 @@ if __name__ == '__main__':
 
         if args.testduo:
             pipeline.load(load_best=not args.load_best)
-            if args.model in [4, 5, 6, 7, 8, 9, 10, 11]:                
-                if args.model == 11 and not args.load_best:
+            if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12]:                
+                if args.model in [11, 12] and not args.load_best:
                     print("Cannot load best model for testing model ID 11. Skipping...")
                 else:
                     pipeline.test_prob(test_logger=test_logger, tag=("best" if not args.load_best else "last"), save_raw_probs=args.save_raw_probs)

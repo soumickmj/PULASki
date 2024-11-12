@@ -319,6 +319,8 @@ class Pipeline:
                             floss, output = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
                         elif self.modelID == 11: #CIMD
                             _, _, _, floss, output = self.model.run_step(local_batch, local_labels)
+                        elif self.modelID == 12: #BerDiff
+                            floss, output = self.model.run_step(local_batch, local_labels)
                         else:
                             for output in self.model(local_batch): 
                                 if level == 0:
@@ -396,7 +398,7 @@ class Pipeline:
                                  "\n MainLoss:" + str(floss))
 
                 # Calculating gradients
-                if self.modelID not in [11,]:
+                if self.modelID not in [11,12]:
                     if self.with_apex:
                         if type(floss) is list:
                             for i in range(len(floss)):
@@ -461,7 +463,7 @@ class Pipeline:
 
             torch.cuda.empty_cache()  # to avoid memory errors
             
-            if self.modelID != 11:
+            if self.modelID not in [11, 12]:
                 self.validate(training_batch_index, epoch)
                 torch.cuda.empty_cache()  # to avoid memory errors
             else:
@@ -553,8 +555,8 @@ class Pipeline:
                                 floss_iter, output1 = self.model.train_step(self.params, local_batch, local_plauslabels, self.dpersonaloss, stage = self.params.stage)
                                 if self.modelID == 10: #Stage II returns all the 10 results, not just one. So, a random sample is chosen every iteraction for val-Dice calculation
                                     output1 = random.choice(output1.split(1, dim=1))
-                            elif self.modelID == 11: #CIMD
-                                sys.exit("Error: Model ID 11 is not supported for validation.")
+                            elif self.modelID in [11, 12]: #CIMD and BerDiff
+                                sys.exit("Error: Model ID 11 and 12 are not supported for validation.")
                             else:
                                 for output in self.model(local_batch):
                                     if level == 0:
@@ -835,8 +837,8 @@ class Pipeline:
                         if self.modelID in [9, 10]: # DPersona
                             outputs = self.model.test_step(local_batch, sample_num=self.n_prob_test).detach().cpu()
                             outputs = list(outputs.split(1, dim=1))
-                        elif self.modelID == 11: #CIMD
-                            outputs = self.model.run_inference(local_batch)
+                        elif self.modelID in [11, 12]: #CIMD and BerDiff
+                            outputs = self.model.run_inference(local_batch, time=100)
                         elif self.ProbFlag == 0:          
                             outputs = []
                             for nP in range(self.n_prob_test):              
