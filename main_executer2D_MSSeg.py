@@ -55,7 +55,8 @@ if __name__ == '__main__':
                              "9{DPersona-StageI};\n"
                              "10{DPersona-StageII};\n"
                              "11{C-I-M-D};\n"
-                             "12{Ber-Diff};\n")
+                             "12{Ber-Diff};\n"
+                             "13{Mr-Prism};\n")
     parser.add_argument("--model_name",
                         default="prova_2DMSSeg",
                         help="Name of the model")
@@ -222,7 +223,7 @@ if __name__ == '__main__':
     if args.load_huggingface:
         model = load_model_huggingface(args.load_huggingface)
     else:
-        model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at, no_outact_op=(args.segloss_mode==2))
+        model = getModel(args.model, is2D=bool(args.slice2D_shape), n_prob_test=args.n_prob_test, prob_injection_at=args.prob_injection_at, no_outact_op=(args.segloss_mode==2), imsize=args.slice2D_shape)
     model.cuda()
     print("It's a 2D model!!" if bool(args.slice2D_shape) else "It's a 3D model!!")
 
@@ -249,7 +250,7 @@ if __name__ == '__main__':
 
     if args.test:
         pipeline.load(load_best=args.load_best) 
-        if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12]:
+        if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]:
             if args.model in [11, 12] and args.load_best:
                 print("Cannot load best model for testing model ID 11. Skipping...")
             else:
@@ -260,7 +261,7 @@ if __name__ == '__main__':
 
         if args.testduo:
             pipeline.load(load_best=not args.load_best)
-            if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12]:                
+            if args.model in [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]:                
                 if args.model in [11, 12] and not args.load_best:
                     print("Cannot load best model for testing model ID 11. Skipping...")
                 else:

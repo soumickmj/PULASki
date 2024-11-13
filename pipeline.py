@@ -35,6 +35,8 @@ from Utils.fid.fidloss import FastFID
 from Models.SSN.trainer.losses import StochasticSegmentationNetworkLossMCIntegral
 from Models.VIMH.loss import VIMHLoss
 from Models.DPersona.initialise_optimisation import init_optimisation
+from Models.MrPrism.function import train_batch_PULASki, val_batch_PULASki, infer_batch_PULASki
+
 from Utils.result_analyser import *
 from Utils.vessel_utils import (convert_and_save_tif, create_diff_mask,
                                 create_mask, load_model, load_model_with_amp,
@@ -265,7 +267,7 @@ class Pipeline:
                 else:
                     lbl = "label"
                 local_labels = patches_batch[lbl][tio.DATA].float().cuda()
-                if self.plauslabels and (self.distloss or self.modelID in [9, 10]):
+                if self.plauslabels and (self.distloss or self.modelID in [9, 10, 13]):
                     local_plauslabels = []
                     for l in labels:
                         local_plauslabels.append(patches_batch[l][tio.DATA])
@@ -321,6 +323,8 @@ class Pipeline:
                             _, _, _, floss, output = self.model.run_step(local_batch, local_labels)
                         elif self.modelID == 12: #BerDiff
                             floss, output = self.model.run_step(local_batch, local_labels)
+                        elif self.modelID == 13: #MrPrism
+                            floss, output = train_batch_PULASki(self.model, local_batch, local_plauslabels, shuffle_weights=0.3)                            
                         else:
                             for output in self.model(local_batch): 
                                 if level == 0:
@@ -503,7 +507,7 @@ class Pipeline:
                 else:
                     lbl = "label"
                 local_labels = patches_batch[lbl][tio.DATA].float().cuda()
-                if self.plauslabels and (self.distloss or self.modelID in [9, 10]):
+                if self.plauslabels and (self.distloss or self.modelID in [9, 10, 13]):
                     labels = [k for k in patches_batch.keys() if "p_label" in k]
                     if self.plauslabel_mode in [1,3]:
                         labels += ["label"]
@@ -557,6 +561,8 @@ class Pipeline:
                                     output1 = random.choice(output1.split(1, dim=1))
                             elif self.modelID in [11, 12]: #CIMD and BerDiff
                                 sys.exit("Error: Model ID 11 and 12 are not supported for validation.")
+                            elif self.modelID == 13: #BerDiff
+                                floss_iter, output1 = val_batch_PULASki(self.model, local_batch, local_plauslabels, local_labels)
                             else:
                                 for output in self.model(local_batch):
                                     if level == 0:
@@ -839,6 +845,8 @@ class Pipeline:
                             outputs = list(outputs.split(1, dim=1))
                         elif self.modelID in [11, 12]: #CIMD and BerDiff
                             outputs = self.model.run_inference(local_batch, time=100)
+                        elif self.modelID == 13: #MrPrism
+                            outputs = infer_batch_PULASki(self.model, local_batch, n_raters=self.n_prob_test)
                         elif self.ProbFlag == 0:          
                             outputs = []
                             for nP in range(self.n_prob_test):              
