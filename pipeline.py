@@ -128,7 +128,7 @@ class Pipeline:
                     sys.exit("Error: Stage II DPersona (Model ID 10) requires Stage I (Model ID 9) DPersona to be loaded by supplying -load_stageI_DPersona.")
             self.params = SimpleNamespace(stage=stage, mask_num=cmd_args.n_prob_test, latent_dim=3, prior_sample_num=10, beta=0.5)
             self.optimizer, self.dpersonaloss = init_optimisation(self.model, stage=self.params.stage)
-        elif self.modelID == 11: #CIMD
+        elif self.modelID in [11,12]: #CIMD
             self.early_stopping = EarlyStopping(patience=5, delta=0)
 
         self.LOWEST_LOSS = float('inf')
