@@ -115,6 +115,9 @@ if __name__ == '__main__':
                         #default="/project/schatter/FranziVSeg/Output/MSSeg_FLAIR_Fold0/DPersonaStageII_At1_pLBL4TrainANDVal/checkpoint",
                         default="",
                         help="Path to checkpoint of existing model to load, ex:/home/model/checkpoint/ [If this is supplied, load_huggingface will be ignored] ")
+    parser.add_argument('--resume',
+                        default=False, action=argparse.BooleanOptionalAction,
+                        help="If resume is True, then the load_path according to the training ID (i.e. the current training) will be used as load_path [Any supplied load_path value will be ignored]")
     parser.add_argument('--load_best',
                         default=False, action=argparse.BooleanOptionalAction,
                         help="Specifiy whether to load the best checkpoiont or the last [Only if load_path is supplied]")
@@ -207,6 +210,14 @@ if __name__ == '__main__':
     OUTPUT_PATH = args.output_path
 
     os.makedirs(OUTPUT_PATH, exist_ok=True)
+
+    if args.resume:
+        resume_path = OUTPUT_PATH + "/" + MODEL_NAME + '/checkpoint/'
+        if not (os.path.exists(resume_path + "checkpointlast.pth") or os.path.exists(resume_path + "checkpointbest.pth")):
+            print(f"Warning: resume is True but no checkpoint found at the path: {resume_path}. Ignoring resume and starting fresh training.")
+        else:
+            print(f"Resuming {OUTPUT_PATH}/{MODEL_NAME}...")
+            args.load_path = resume_path
 
     LOAD_PATH = args.load_path
     CHECKPOINT_PATH = OUTPUT_PATH + "/" + MODEL_NAME + '/checkpoint/'
