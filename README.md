@@ -1,7 +1,7 @@
 # PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation
 PULASki = **P**robabilistic **U**net with **L**oss **A**ssessed through **S**tatistical d**I**stances
 
-The official code of the paper "PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation"
+The official code of the paper "PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation" (DOI: https://doi.org/10.1016/j.media.2025.103623, preprint: https://arxiv.org/abs/2312.15686)
 
 The preliminary idea was presented at the SIAM Conference on Mathematics of Data Science in September 2022, within the talk titled "Model Geometry Uncertainty Quantification for Improved Hemodynamic Data Assimilation".
 
@@ -35,16 +35,18 @@ If you like this repository, please click on Star!
 
 If you use this approach in your research or use codes from this repository or the weights from Huggingface, please cite the following in your publications:
 
-> [Chatterjee, S., Gaidzik, F., Sciarra, A., Mattern, H., Janiga, G., Speck, O., Nuernberger, A., & Pathiraja, S. (2023). PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation. arXiv preprint arXiv:2312.15686.](https://arxiv.org/abs/2312.15686)
+> [Chatterjee, S., Gaidzik, F., Sciarra, A., Mattern, H., Janiga, G., Speck, O., ... & Pathiraja, S. (2025). PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation. Medical Image Analysis, 103623.](https://authors.elsevier.com/a/1l5Ba4rfPmLeth)
 
 BibTeX entry:
 
 ```bibtex
-@article{chatterjee2023pulaski,
+@article{chatterjee2025pulaski,
   title={PULASki: Learning inter-rater variability using statistical distances to improve probabilistic segmentation},
   author={Chatterjee, Soumick and Gaidzik, Franziska and Sciarra, Alessandro and Mattern, Hendrik and Janiga, G{\'a}bor and Speck, Oliver and N{\"u}rnberger, Andreas and Pathiraja, Sahani},
-  journal={arXiv preprint arXiv:2312.15686},
-  year={2023}
+  journal={Medical Image Analysis},
+  pages={103623},
+  year={2025},
+  publisher={Elsevier}
 }
 
 ```
